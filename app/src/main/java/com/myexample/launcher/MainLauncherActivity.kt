@@ -5,7 +5,10 @@ import android.content.pm.ResolveInfo
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -19,6 +22,8 @@ class MainLauncherActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
 
         setupAdapter()
+
+
     }
 
     private fun setupAdapter() {
@@ -32,18 +37,54 @@ class MainLauncherActivity : AppCompatActivity() {
                 b.loadLabel(packageManager).toString()
             )
         })
-        Log.d("TAG","Found ${activities.size} activites")
+        Log.d("TAG", "Found ${activities.size} activites")
+        recyclerView.adapter = ActivityAdapter(activities)
     }
 
-    private  class ActivityHolder(itemView : View):RecyclerView.ViewHolder(itemView){
-        private val nameTextView = itemView as TextView
-        private  lateinit var resolveInfo: ResolveInfo
-        fun bindActivity(resolveInfo: ResolveInfo){
+    private class ActivityHolder(itemView: View) : RecyclerView.ViewHolder(itemView),
+        View.OnClickListener {
+        private val imageIcon = itemView.findViewById(R.id.image_icon) as ImageView
+        private val viewText = itemView.findViewById(R.id.icon_app) as TextView
+        private lateinit var resolveInfo: ResolveInfo
+        val pm = itemView.context.packageManager
+        init {
+            viewText.setOnClickListener(this)
+        }
+
+        fun bindActivity(resolveInfo: ResolveInfo) {
             this.resolveInfo = resolveInfo
-            val packageManager = itemView.context.packageManager
-            val appName = resolveInfo.loadLabel(packageManager).toString()
-            nameTextView.text = appName
+            val appName = resolveInfo.loadLabel(pm).toString()
+            val icon = resolveInfo.loadIcon(pm)
+            viewText.text = appName
+            imageIcon.background = icon
+        }
+
+        override fun onClick(p0: View?) {
+            val activityInfo = resolveInfo.activityInfo
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                setClassName(activityInfo.packageName, activityInfo.name)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            val context = viewText.context
+            context.startActivity(intent)
         }
     }
-    private  class ActivityAdapter
+
+    private class ActivityAdapter(val activities: List<ResolveInfo>) :
+        RecyclerView.Adapter<ActivityHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ActivityHolder {
+            val layoutInflater = LayoutInflater.from(parent.context)
+            val view = layoutInflater.inflate(R.layout.view_list_app, parent, false)
+            return ActivityHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: ActivityHolder, position: Int) {
+            val resolveInfo = activities[position]
+            holder.bindActivity(resolveInfo)
+        }
+
+        override fun getItemCount(): Int = activities.size
+
+    }
 }
